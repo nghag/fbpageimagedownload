@@ -13,10 +13,11 @@ FB.options({
 });
 
 //86037497258 - Chelsea FC pageid
+//6798562721 - Breaking Bad
+//189124004441511 - Homeland
+
 var pageId = '/86037497258';
 var pageFields = {};
-
-
 
 var pageAlbumPath = pageId + '/albums'
 var albumFields = {
@@ -26,7 +27,7 @@ var albumFields = {
 
 
 var albumPhotoDetails = {
-    "fields": "photos{images,id,created_time,updated_time}"
+    "fields": "name,id,photos{images,id,created_time,updated_time}"
 };
 var albumArray = [];
 
@@ -96,7 +97,7 @@ function createAlbumDir(pageName, callback) {
 
                 albumArray.push(value);
 
-                var albumPath = pathModule.join(__dirname, imageDir, pageName, value.name.replace(':', '').replace('/', '') + '-' + value.id)
+                var albumPath = pathModule.join(__dirname, imageDir, pageName, value.name.replace(/[&\/\\#,+()$~%.'":*?<>{}]/g, '') + '-' + value.id)
 
                 fs.access(albumPath, fs.F_OK, (err) => {
                     if (err) {
@@ -137,26 +138,42 @@ function createAlbumDir(pageName, callback) {
 
 function downloadAlbum(albumDetails, pageName, callback) {
 
-    loopAlbumDetails(albumDetails[1].id);
+    // for (var index = 0; index < albumDetails.length; index++) {
+
+
+    //     loopAlbumDetails(albumDetails[index].id);
+    // }
+
+    var interval = 10 * 1000;
+
+    for (var index = 0; index < albumDetails.length; index++) {
+        setTimeout(function (index) {
+            console.log(albumDetails[index].id);
+            loopAlbumDetails(albumDetails[index].id);
+        }, interval * index, index);
+    }
 
     function loopAlbumDetails(albumId) {
         FB.api('/' + albumId, 'GET', albumPhotoDetails, downloadAlbumCallBack);
     }
 
     function downloadAlbumCallBack(albumDetailsResponse) {
-        if (!albumDetailsResponse || albumDetailsResponse.error) {
-            console.log(response ? 'error occurred' : response.error);
-            callback(err.message);
+        if (!albumDetailsResponse || albumDetailsResponse.error || !albumDetailsResponse.photos) {
+            console.log(albumDetailsResponse ? 'error occurred' : albumDetailsResponse.error);
+            //callback(albumDetailsResponse.error.message);
+            console.log(albumDetailsResponse);
+            return;
         }
 
-        //change for loop
+        //change for loop        
+        
         for (counter = 0; counter < albumDetailsResponse.photos.data.length; counter++) {
 
-            //var downloadAlbumPath = pathModule.join(__dirname, imageDir, pageName, albumDetails[1].name.replace(':', '').replace('/', '') + '-' + albumDetails[1].id)
+            var downloadAlbumPath = pathModule.join(__dirname, imageDir, pageName, albumDetailsResponse.name.replace(/[&\/\\#,+()$~%.'":*?<>{}]/g, '') + '-' + albumDetailsResponse.id)
             //console.log(downloadAlbumPath);
-
             //console.log("Downloading : " + dir + '/' + response.photos.data[counter].images[0].source);
-            downloadImage(albumDetailsResponse.photos.data[counter].id, albumDetailsResponse.photos.data[counter].images[0].source);
+
+            downloadImage(pathModule.join(downloadAlbumPath, albumDetailsResponse.photos.data[counter].id), albumDetailsResponse.photos.data[counter].images[0].source);
         }
     }
 }
@@ -194,7 +211,7 @@ function downloadImage(imageId, imageURL) {
         http.get(imageURL, function (fileResponse) {
             var file = fs.createWriteStream(imageId + ".jpg");
             fileResponse.pipe(file);
-            console.log("Download Complete " + imageId);
+            //console.log("Download Complete " + imageId);
         });
     } catch (err) {
         console.log(err.message);
